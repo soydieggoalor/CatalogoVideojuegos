@@ -1,16 +1,33 @@
-package org.example
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import kotlin.io.path.Path
+import kotlin.io.path.exists
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-fun main() {
-    val name = "Kotlin"
-    //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-    // to see how IntelliJ IDEA suggests fixing it.
-    println("Hello, " + name + "!")
+fun main(){
+    val rutaDatosIni: Path = Path.of("datos", "datos_ini") // /datos/
+    val rutaDatosFin: Path = Path.of("datos", "datos_fin")
 
-    for (i in 1..5) {
-        //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-        // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-        println("i = $i")
+
+    if(!rutaDatosIni.exists() || !rutaDatosFin.exists()){
+        println("Creando rutas...")
+        if(!rutaDatosIni.exists()){
+            println("Creación de ruta para DATOS_INI")
+            Path.of("datos", "datos_ini").toFile().mkdirs()
+        }
+        if(!rutaDatosFin.exists()){
+            println("Creación de ruta para DATOS_FIN")
+            Path.of("datos", "datos_fin").toFile().mkdirs()
+        }
+    } else {
+        println("Prueba: el directorio ya existía")
     }
+
+
+    val videojuegosCsv : Path = Path.of("datos", "videojuegos_csv")
+    if(!videojuegosCsv.exists()){
+        println("Creando videojuegos CSV")
+
+    }
+
 }
