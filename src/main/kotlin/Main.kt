@@ -13,21 +13,28 @@ fun main(){
         println("Creando rutas...")
         if(!rutaDatosIni.exists()){
             println("Creación de ruta para DATOS_INI")
-            Path.of("datos", "datos_ini").toFile().mkdirs()
+            Files.createDirectories(Path.of("datos", "datos_ini"))
         }
         if(!rutaDatosFin.exists()){
             println("Creación de ruta para DATOS_FIN")
-            Path.of("datos", "datos_fin").toFile().mkdirs()
+            Files.createDirectories(Path.of("datos", "datos_fin"))
         }
     } else {
         println("Prueba: el directorio ya existía")
     }
 
 
-    val videojuegosCsv : Path = Path.of("datos", "videojuegos_csv")
+    val videojuegosCsv : Path = Path.of("datos", "datos_ini", "videojuegos.csv")
     if(!videojuegosCsv.exists()){
         println("Creando videojuegos CSV")
-
+        Files.createFile(Path.of("datos", "datos_ini", "videojuegos.csv"))
+        if (videojuegosCsv.exists()){
+            println("Archivo creado con éxito")
+        } else {
+            println("No se ha podido crear videojuegos CSV")
+        }
+    } else {
+        println("El archivo Videojuegos CSV ya existía.")
     }
 
 }
