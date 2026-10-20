@@ -1,117 +1,82 @@
-
 fun listarVideojuegos(lista: List<Videojuego>) {
     if (lista.isEmpty()) {
-        println("No hay videojuegos en el catálogo.")
+        println("El catálogo está vacío.")
         return
     }
+    println("--- Catálogo de videojuegos ---")
+    lista.forEach { mostrarVideojuego(it) }
+}
 
-    lista.forEach { videojuego ->
-        println(
-            "ID: ${videojuego.id} | " +
-                    "Título: ${videojuego.titulo} | " +
-                    "Género: ${videojuego.genero} | " +
-                    "Año: ${videojuego.anio} | " +
-                    "Nota: ${videojuego.nota}"
-        )
-    }
+fun mostrarVideojuego(v: Videojuego) {
+    println("  - ID: ${v.id}, Título: ${v.titulo}, Género: ${v.genero}, Año: ${v.anio}, Nota: ${v.nota}")
 }
 
 fun buscarPorId(lista: List<Videojuego>, id: Int) {
-    val videojuego = lista.find { it.id == id }
-
-    if (videojuego != null) {
-        println(videojuego)
-    } else {
-        println("No existe ningún videojuego con ese ID.")
-    }
+    val encontrado = lista.find { it.id == id }
+    if (encontrado != null) mostrarVideojuego(encontrado)
+    else println("No existe ningún videojuego con ID $id.")
 }
 
-fun anyadirVideojuego(lista: List<Videojuego>): List<Videojuego> {
-    println("Introduce el título:")
+fun añadirVideojuego(lista: List<Videojuego>): List<Videojuego> {
+    print("Título: ")
     val titulo = readlnOrNull()?.trim()
-
-    if (titulo.isNullOrBlank()) {
+    if (titulo.isNullOrEmpty()) {
         println("El título no puede estar vacío.")
         return lista
     }
 
-    println("Introduce el género:")
+    print("Género: ")
     val genero = readlnOrNull()?.trim()
-
-    if (genero.isNullOrBlank()) {
+    if (genero.isNullOrEmpty()) {
         println("El género no puede estar vacío.")
         return lista
     }
 
-    println("Introduce el año:")
-    val anio = readlnOrNull()?.toIntOrNull()
-
-    if (anio == null || anio <= 0) {
+    print("Año: ")
+    val anio = readlnOrNull()?.trim()?.toIntOrNull()
+    if (anio == null || anio < 1950 || anio > 2100) {
         println("Año no válido.")
         return lista
     }
 
-    println("Introduce la nota (0-10):")
-    val nota = readlnOrNull()?.toDoubleOrNull()
-
+    print("Nota (0.0 - 10.0): ")
+    val nota = readlnOrNull()?.trim()?.replace(',', '.')?.toDoubleOrNull()
     if (nota == null || nota !in 0.0..10.0) {
-        println("Nota no válida.")
+        println("Nota no válida: debe estar entre 0.0 y 10.0.")
         return lista
     }
 
     val nuevoId = (lista.maxOfOrNull { it.id } ?: 0) + 1
-
-    val nuevoVideojuego = Videojuego(
-        nuevoId, titulo, genero, anio, nota
-    )
-
-    println("Videojuego añadido correctamente.")
-    return lista + nuevoVideojuego
+    println("Videojuego añadido con ID $nuevoId.")
+    return lista + Videojuego(nuevoId, titulo, genero, anio, nota)
 }
 
-fun modificarNota(
-    lista: List<Videojuego>,
-    id: Int,
-    nuevaNota: Double
-): List<Videojuego> {
+fun modificarNota(lista: List<Videojuego>, id: Int, nuevaNota: Double): List<Videojuego> {
     if (lista.none { it.id == id }) {
-        println("No existe ningún videojuego con ese ID.")
+        println("No existe ningún videojuego con ID $id.")
         return lista
     }
-
     if (nuevaNota !in 0.0..10.0) {
-        println("La nota debe estar entre 0 y 10.")
+        println("Nota fuera de rango [0.0, 10.0].")
         return lista
     }
-
-    println("Nota modificada correctamente.")
-
-    return lista.map { videojuego ->
-        if (videojuego.id == id) {
-            videojuego.copy(nota = nuevaNota)
-        } else {
-            videojuego
-        }
-    }
+    println("Nota actualizada.")
+    return lista.map { if (it.id == id) it.copy(nota = nuevaNota) else it }
 }
 
-fun eliminarVideojuego(
-    lista: List<Videojuego>,
-    id: Int
-): List<Videojuego> {
-    if (lista.none { it.id == id }) {
-        println("No existe ningún videojuego con ese ID.")
+fun eliminarVideojuego(lista: List<Videojuego>, id: Int): List<Videojuego> {
+    val videojuego = lista.find { it.id == id }
+    if (videojuego == null) {
+        println("No existe ningún videojuego con ID $id.")
         return lista
     }
-
-    println("¿Seguro que quieres eliminarlo? (s/n)")
-    val confirmacion = readlnOrNull()?.trim()?.lowercase()
-
-    if (confirmacion == "s") {
+    print("¿Seguro que quieres eliminar \"${videojuego.titulo}\"? (s/n): ")
+    val respuesta = readlnOrNull()?.trim()?.lowercase()
+    return if (respuesta == "s") {
         println("Videojuego eliminado.")
-        return lista.filter { it.id != id }
+        lista.filter { it.id != id }
+    } else {
+        println("Operación cancelada.")
+        lista
     }
-
-    println("Eliminación cancelada.")
-    return lista
 }

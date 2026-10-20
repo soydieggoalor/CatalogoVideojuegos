@@ -1,10 +1,7 @@
-
 fun main() {
-    var videojuegos = VideojuegoRepository.leer()
+    var catalogo: List<Videojuego> = VideojuegoRepository.leer()
 
-    var salir = false
-
-    while (!salir) {
+    do {
         println()
         println("===== CATÁLOGO DE VIDEOJUEGOS =====")
         println("1. Gestión CSV")
@@ -12,93 +9,86 @@ fun main() {
         println("====================================")
         print("Elige una opción: ")
 
-        when (readlnOrNull()?.toIntOrNull()) {
-            1 -> {
-                var volver = false
+        val opcion = readlnOrNull()?.trim()?.toIntOrNull()
+        when (opcion) {
+            1 -> catalogo = menuCSV(catalogo)
+            0 -> println("¡Hasta luego!")
+            else -> println("Opción no válida.")
+        }
+    } while (opcion != 0)
+}
 
-                while (!volver) {
-                    println()
-                    println("--- Gestión CSV ---")
-                    println("1. Listar todos los videojuegos")
-                    println("2. Buscar videojuego por ID")
-                    println("3. Añadir nuevo videojuego")
-                    println("4. Modificar nota de un videojuego")
-                    println("5. Eliminar videojuego")
-                    println("0. Volver al menú principal")
-                    print("Elige una opción: ")
+fun menuCSV(listaInicial: List<Videojuego>): List<Videojuego> {
+    var lista = listaInicial
 
-                    when (readlnOrNull()?.toIntOrNull()) {
-                        1 -> listarVideojuegos(videojuegos)
+    do {
+        println()
+        println("--- Gestión CSV ---")
+        println("1. Listar todos los videojuegos")
+        println("2. Buscar videojuego por ID")
+        println("3. Añadir nuevo videojuego")
+        println("4. Modificar nota de un videojuego")
+        println("5. Eliminar videojuego")
+        println("0. Volver al menú principal")
+        print("Elige una opción: ")
 
-                        2 -> {
-                            print("Introduce el ID: ")
-                            val id = readlnOrNull()?.toIntOrNull()
+        val opcion = readlnOrNull()?.trim()?.toIntOrNull()
+        when (opcion) {
+            1 -> listarVideojuegos(lista)
 
-                            if (id == null) {
-                                println("ID no válido.")
-                            } else {
-                                buscarPorId(videojuegos, id)
-                            }
-                        }
+            2 -> {
+                val id = leerEntero("ID a buscar: ")
+                if (id == null) println("ID no válido.") else buscarPorId(lista, id)
+            }
 
-                        3 -> {
-                            videojuegos = anyadirVideojuego(videojuegos)
-                            VideojuegoRepository.guardar(videojuegos)
-                        }
+            3 -> {
+                val nueva = añadirVideojuego(lista)
+                if (nueva != lista) {
+                    lista = nueva
+                    VideojuegoRepository.guardar(lista)
+                }
+            }
 
-                        4 -> {
-                            print("Introduce el ID: ")
-                            val id = readlnOrNull()?.toIntOrNull()
-
-                            if (id == null) {
-                                println("ID no válido.")
-                            } else if (videojuegos.none { it.id == id }) {
-                                println("No existe ningún videojuego con ese ID.")
-                            } else {
-                                print("Introduce la nueva nota (0-10): ")
-                                val nota = readlnOrNull()?.toDoubleOrNull()
-
-                                if (nota == null || nota !in 0.0..10.0) {
-                                    println("Nota no válida.")
-                                } else {
-                                    videojuegos = modificarNota(
-                                        videojuegos, id, nota
-                                    )
-                                    VideojuegoRepository.guardar(videojuegos)
-                                }
-                            }
-                        }
-
-                        5 -> {
-                            print("Introduce el ID: ")
-                            val id = readlnOrNull()?.toIntOrNull()
-
-                            if (id == null) {
-                                println("ID no válido.")
-                            } else if (videojuegos.none { it.id == id }) {
-                                println("No existe ningún videojuego con ese ID.")
-                            } else {
-                                videojuegos = eliminarVideojuego(videojuegos, id)
-                                VideojuegoRepository.guardar(videojuegos)
-                            }
-                        }
-
-                        0 -> volver = true
-
-                        null -> println("Introduce una opción numérica válida.")
-
-                        else -> println("Opción no válida.")
+            4 -> {
+                val id = leerEntero("ID del videojuego: ")
+                if (id == null) {
+                    println("ID no válido.")
+                } else if (lista.none { it.id == id }) {
+                    println("No existe ningún videojuego con ID $id.")
+                } else {
+                    print("Nueva nota (0.0 - 10.0): ")
+                    val nota = readlnOrNull()?.trim()?.replace(',', '.')?.toDoubleOrNull()
+                    if (nota == null || nota !in 0.0..10.0) {
+                        println("Nota no válida: debe estar entre 0.0 y 10.0.")
+                    } else {
+                        lista = modificarNota(lista, id, nota)
+                        VideojuegoRepository.guardar(lista)
                     }
                 }
             }
 
-            0 -> salir = true
+            5 -> {
+                val id = leerEntero("ID a eliminar: ")
+                if (id == null) {
+                    println("ID no válido.")
+                } else {
+                    val nueva = eliminarVideojuego(lista, id)
+                    if (nueva != lista) {
+                        lista = nueva
+                        VideojuegoRepository.guardar(lista)
+                    }
+                }
+            }
 
-            null -> println("Introduce una opción numérica válida.")
-
+            0 -> {}
             else -> println("Opción no válida.")
         }
-    }
+    } while (opcion != 0)
 
-    println("¡Hasta pronto!")
+    return lista
+}
+
+fun leerEntero(mensaje: String): Int? {
+    print(mensaje)
+    return readlnOrNull()?.trim()?.toIntOrNull()
 }

@@ -1,58 +1,52 @@
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 import com.github.doyaaaaaken.kotlincsv.dsl.csvWriter
-import java.io.File
-import kotlin.io.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.Path
 
 object VideojuegoRepository {
 
-    private val archivo = File(
-        "proyecto/datos/datos_ini/videojuegos.csv"
-    )
+    private val ruta: Path = Path.of("datos", "datos_ini", "videojuegos.csv")
 
     fun leer(): List<Videojuego> {
-        return csvReader { delimiter = ';' }
-            .readAll(archivo)
-            .mapNotNull { fila ->
-                if (fila.size != 5) {
-                    null
-                } else {
-                    val id = fila[0].toIntOrNull()
-                    val titulo = fila[1]
-                    val genero = fila[2]
-                    val anio = fila[3].toIntOrNull()
-                    val nota = fila[4].toDoubleOrNull()
+        if (!Files.isReadable(ruta)) {
+            println("Aviso: no se puede leer $ruta. Se empieza con un catálogo vacío.")
+            return emptyList()
+        }
 
-                    if (
-                        id != null &&
-                        titulo.isNotBlank() &&
-                        genero.isNotBlank() &&
-                        anio != null &&
-                        nota != null &&
-                        nota in 0.0..10.0
-                    ) {
-                        Videojuego(
-                            id, titulo, genero, anio, nota
-                        )
-                    } else {
-                        null
-                    }
+        val filas: List<List<String>> = csvReader { delimiter = ';' }.readAll(ruta.toFile())
+
+        return filas.mapNotNull { columnas ->
+            if (columnas.size >= 5) {
+                try {
+                    Videojuego(
+                        id = columnas[0].toInt(),
+                        titulo = columnas[1],
+                        genero = columnas[2],
+                        anio = columnas[3].toInt(),
+                        nota = columnas[4].toDouble()
+                    )
+                } catch (e: Exception) {
+                    println("Fila inválida ignorada: $columnas -> ${e.message}")
+                    null
                 }
+            } else {
+                println("Fila con formato incompleto ignorada: $columnas")
+                null
             }
+        }
     }
 
     fun guardar(lista: List<Videojuego>) {
-        csvWriter { delimiter = ';' }
-            .writeAll(
-                lista.map { videojuego ->
-                    listOf(
-                        videojuego.id.toString(),
-                        videojuego.titulo,
-                        videojuego.genero,
-                        videojuego.anio.toString(),
-                        videojuego.nota.toString()
-                    )
+        try {
+            Files.createDirectories(ruta.parent)
+            csvWriter { delimiter = ';' }.writeAll(
+                lista.map {
+                    listOf(it.id.toString(), it.titulo, it.genero, it.anio.toString(), it.nota.toString())
                 },
-                archivo
+                ruta.toFile()
             )
+        } catch (e: Exception) {
+            println("Error al escribir el fichero CSV: ${e.message}")
+        }
     }
 }
