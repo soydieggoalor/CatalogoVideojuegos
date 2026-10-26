@@ -6,8 +6,12 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 
 object VideojuegoRepository {
 
@@ -215,3 +219,266 @@ fun convertir(
         println("Error al convertir el fichero: ${e.message}")
     }
 }
+
+const val TAMANO_ID = Int.SIZE_BYTES
+const val TAMANO_TITULO = 40
+const val TAMANO_GENERO = 20
+const val TAMANO_ANIO = Int.SIZE_BYTES
+const val TAMANO_NOTA = Double.SIZE_BYTES
+const val TAMANO_REGISTRO = TAMANO_ID + TAMANO_TITULO + TAMANO_GENERO + TAMANO_ANIO + TAMANO_NOTA
+
+fun obtenerRutaBin(): Path {
+    val dirFin = Path.of("proyecto", "datos", "datos_fin")
+    return if (Files.isDirectory(dirFin)) {
+        dirFin.resolve("videojuegos.bin")
+    } else if (Files.isDirectory(Path.of("datos_fin"))) {
+        Path.of("datos_fin", "videojuegos.bin")
+    } else {
+        Path.of("videojuegos.bin")
+    }
+}
+
+fun vaciarCrearFicheroBin(rutaBin: Path) {
+    try {
+        val parent = rutaBin.parent
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent)
+        }
+        FileChannel.open(
+            rutaBin,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        ).close()
+        println("--- El fichero binario '${rutaBin.fileName}' se ha creado y está vacío.")
+    } catch (e: Exception) {
+        println("Error al vaciar o crear el fichero binario: ${e.message}")
+    }
+}
+
+fun importarABinario(rutaBin: Path): Int {
+    val rutaCSV = obtenerRutaIni("videojuegos.csv")
+    if (!Files.exists(rutaCSV)) {
+        println("No se encontró el fichero de origen en: $rutaCSV")
+        return 0
+    }
+
+    val lista = leerCSV(rutaCSV)
+    if (lista.isEmpty()) {
+        println("El fichero origen está vacío o no se pudieron leer videojuegos.")
+        return 0
+    }
+
+    vaciarCrearFicheroBin(rutaBin)
+    for (juego in lista) {
+        anadirVideojuegoBin(rutaBin, juego)
+    }
+    println("--- Información importada con éxito al fichero binario: ${lista.size} registros.")
+    return lista.size
+}
+
+fun leerVideojuegosBin(rutaBin: Path): List<Videojuego> {
+    val videojuegos = mutableListOf<Videojuego>()
+    if (!Files.exists(rutaBin) || !Files.isReadable(rutaBin)) {
+        return emptyList()
+    }
+
+    try {
+        FileChannel.open(rutaBin, StandardOpenOption.READ).use { canal ->
+            val buffer = ByteBuffer.allocate(TAMANO_REGISTRO)
+            while (canal.read(buffer) > 0) {
+                buffer.flip()
+                val id = buffer.getInt()
+
+                val tituloBytes = ByteArray(TAMANO_TITULO)
+                buffer.get(tituloBytes)
+                val titulo = String(tituloBytes, Charsets.ISO_8859_1).trim()
+
+                val generoBytes = ByteArray(TAMANO_GENERO)
+                buffer.get(generoBytes)
+                val genero = String(generoBytes, Charsets.ISO_8859_1).trim()
+
+                val anio = buffer.getInt()
+                val nota = buffer.getDouble()
+
+                videojuegos.add(Videojuego(id, titulo, genero, anio, nota))
+                buffer.clear()
+            }
+        }
+    } catch (e: Exception) {
+        println("Error al leer el fichero binario: ${e.message}")
+    }
+    return videojuegos
+}
+
+fun obtenerVideojuegoPorIdBin(rutaBin: Path, idBuscado: Int): Videojuego? {
+    if (!Files.exists(rutaBin) || !Files.isReadable(rutaBin)) return null
+
+    try {
+        FileChannel.open(rutaBin, StandardOpenOption.READ).use { canal ->
+            val buffer = ByteBuffer.allocate(TAMANO_REGISTRO)
+            while (canal.read(buffer) > 0) {
+                buffer.flip()
+                val id = buffer.getInt()
+
+                val tituloBytes = ByteArray(TAMANO_TITULO)
+                buffer.get(tituloBytes)
+                val titulo = String(tituloBytes, Charsets.ISO_8859_1).trim()
+
+                val generoBytes = ByteArray(TAMANO_GENERO)
+                buffer.get(generoBytes)
+                val genero = String(generoBytes, Charsets.ISO_8859_1).trim()
+
+                val anio = buffer.getInt()
+                val nota = buffer.getDouble()
+
+                if (id == idBuscado) {
+                    return Videojuego(id, titulo, genero, anio, nota)
+                }
+                buffer.clear()
+            }
+        }
+    } catch (e: Exception) {
+        println("Error al buscar en el fichero binario: ${e.message}")
+    }
+    return null
+}
+
+fun existeIdEnBinario(rutaBin: Path, id: Int): Boolean {
+    return obtenerVideojuegoPorIdBin(rutaBin, id) != null
+}
+
+fun anadirVideojuegoBin(rutaBin: Path, juego: Videojuego) {
+    try {
+        val parent = rutaBin.parent
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent)
+        }
+
+        FileChannel.open(
+            rutaBin,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.APPEND
+        ).use { canal ->
+            val buffer = ByteBuffer.allocate(TAMANO_REGISTRO)
+
+            buffer.putInt(juego.id)
+
+            val tituloBytes = juego.titulo
+                .take(TAMANO_TITULO)
+                .padEnd(TAMANO_TITULO, ' ')
+                .toByteArray(Charsets.ISO_8859_1)
+            buffer.put(tituloBytes, 0, TAMANO_TITULO)
+
+            val generoBytes = juego.genero
+                .take(TAMANO_GENERO)
+                .padEnd(TAMANO_GENERO, ' ')
+                .toByteArray(Charsets.ISO_8859_1)
+            buffer.put(generoBytes, 0, TAMANO_GENERO)
+
+            buffer.putInt(juego.anio)
+            buffer.putDouble(juego.nota)
+
+            buffer.flip()
+            while (buffer.hasRemaining()) {
+                canal.write(buffer)
+            }
+        }
+    } catch (e: Exception) {
+        println("Error al añadir al fichero binario: ${e.message}")
+    }
+}
+
+fun modificarNotaBin(rutaBin: Path, idVideojuego: Int, nuevaNota: Double): Boolean {
+    if (!Files.exists(rutaBin)) {
+        println("El fichero binario no existe.")
+        return false
+    }
+
+    try {
+        FileChannel.open(
+            rutaBin,
+            StandardOpenOption.READ,
+            StandardOpenOption.WRITE
+        ).use { canal ->
+            val buffer = ByteBuffer.allocate(TAMANO_REGISTRO)
+            var encontrado = false
+
+            while (canal.read(buffer) > 0 && !encontrado) {
+                val posicionActual = canal.position()
+                buffer.flip()
+                val id = buffer.getInt()
+
+                if (id == idVideojuego) {
+                    encontrado = true
+
+                    val inicioRegistro = posicionActual - TAMANO_REGISTRO
+                    val desplazamientoNota = TAMANO_ID + TAMANO_TITULO + TAMANO_GENERO + TAMANO_ANIO
+                    val posicionNota = inicioRegistro + desplazamientoNota
+
+                    canal.position(posicionNota)
+                    val bufferNota = ByteBuffer.allocate(TAMANO_NOTA)
+                    bufferNota.putDouble(nuevaNota)
+                    bufferNota.flip()
+
+                    while (bufferNota.hasRemaining()) {
+                        canal.write(bufferNota)
+                    }
+                }
+                buffer.clear()
+            }
+            return encontrado
+        }
+    } catch (e: Exception) {
+        println("Error al modificar en el fichero binario: ${e.message}")
+        return false
+    }
+}
+
+fun eliminarVideojuegoBin(rutaBin: Path, idVideojuego: Int): Boolean {
+    if (!Files.exists(rutaBin)) {
+        println("El fichero binario no existe.")
+        return false
+    }
+
+    val pathTemporal = Path.of(rutaBin.toString() + ".tmp")
+    var encontrado = false
+
+    try {
+        FileChannel.open(rutaBin, StandardOpenOption.READ).use { canalLectura ->
+            FileChannel.open(
+                pathTemporal,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            ).use { canalEscritura ->
+                val buffer = ByteBuffer.allocate(TAMANO_REGISTRO)
+                while (canalLectura.read(buffer) > 0) {
+                    buffer.flip()
+                    val id = buffer.getInt()
+                    if (id == idVideojuego) {
+                        encontrado = true
+                    } else {
+                        buffer.rewind()
+                        canalEscritura.write(buffer)
+                    }
+                    buffer.clear()
+                }
+            }
+        }
+
+        if (encontrado) {
+            Files.move(pathTemporal, rutaBin, StandardCopyOption.REPLACE_EXISTING)
+            return true
+        } else {
+            Files.deleteIfExists(pathTemporal)
+            return false
+        }
+    } catch (e: Exception) {
+        println("Error durante la eliminación en el fichero binario: ${e.message}")
+        Files.deleteIfExists(pathTemporal)
+        return false
+    }
+}
+

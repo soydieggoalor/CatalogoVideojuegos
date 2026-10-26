@@ -26,6 +26,8 @@ fun buscarPorId(lista: List<Videojuego>, id: Int) {
     }
 }
 
+fun añadirVideojuego(lista: List<Videojuego>): List<Videojuego> = anyadirVideojuego(lista)
+
 fun anyadirVideojuego(lista: List<Videojuego>): List<Videojuego> {
     println("Introduce el título:")
     val titulo = readlnOrNull()?.trim()
@@ -44,7 +46,7 @@ fun anyadirVideojuego(lista: List<Videojuego>): List<Videojuego> {
     }
 
     println("Introduce el año:")
-    val anio = readlnOrNull()?.toIntOrNull()
+    val anio = readlnOrNull()?.trim()?.toIntOrNull()
 
     if (anio == null || anio <= 0) {
         println("Año no válido.")
@@ -52,7 +54,7 @@ fun anyadirVideojuego(lista: List<Videojuego>): List<Videojuego> {
     }
 
     println("Introduce la nota (0-10):")
-    val nota = readlnOrNull()?.toDoubleOrNull()
+    val nota = readlnOrNull()?.trim()?.replace(',', '.')?.toDoubleOrNull()
 
     if (nota == null || nota !in 0.0..10.0) {
         println("Nota no válida.")
@@ -160,7 +162,7 @@ fun menuGestionCSV(catalogoActual: List<Videojuego>): List<Videojuego> {
                     println("No existe ningún videojuego con ese ID.")
                 } else {
                     print("Introduce la nueva nota (0-10): ")
-                    val nota = readlnOrNull()?.toDoubleOrNull()
+                    val nota = readlnOrNull()?.trim()?.replace(',', '.')?.toDoubleOrNull()
 
                     if (nota == null || nota !in 0.0..10.0) {
                         println("Nota no válida.")
@@ -268,6 +270,184 @@ fun submenuConversiones() {
             )
             0 -> volver = true
             null -> println("Introduce una opción numérica válida.")
+            else -> println("Opción no válida.")
+        }
+    }
+}
+
+fun menuGestionBIN() {
+    val rutaBin = obtenerRutaBin()
+    var volver = false
+
+    while (!volver) {
+        println()
+        println("===== CRUD fichero BIN =====")
+        println("1. Importar información de un fichero de intercambio.")
+        println("2. Leer información del fichero binario.")
+        println("3. Añadir un registro nuevo")
+        println("4. Modificar un registro existente (por ID)")
+        println("5. Eliminar un registro existente (por ID)")
+        println("0. Volver")
+        print("Elige una opción: ")
+
+        when (readlnOrNull()?.toIntOrNull()) {
+            1 -> {
+                importarABinario(rutaBin)
+            }
+
+            2 -> {
+                val juegos = leerVideojuegosBin(rutaBin)
+                if (juegos.isEmpty()) {
+                    println("El fichero binario está vacío o no existe.")
+                } else {
+                    println()
+                    println("--- Catálogo en fichero binario ---")
+                    listarVideojuegos(juegos)
+                }
+            }
+
+            3 -> {
+                var idValido: Int? = null
+                while (idValido == null) {
+                    print("Introduce el ID: ")
+                    val idInput = readlnOrNull()?.toIntOrNull()
+                    if (idInput == null || idInput <= 0) {
+                        println("ID no válido. Debe ser un número entero positivo.")
+                    } else if (existeIdEnBinario(rutaBin, idInput)) {
+                        println("El ID $idInput ya existe en el fichero binario. Introduce otro.")
+                    } else {
+                        idValido = idInput
+                    }
+                }
+
+                var tituloValido: String? = null
+                while (tituloValido == null) {
+                    print("Introduce el título: ")
+                    val t = readlnOrNull()?.trim()
+                    if (t.isNullOrBlank()) {
+                        println("El título no puede estar vacío.")
+                    } else {
+                        tituloValido = t
+                    }
+                }
+
+                var generoValido: String? = null
+                while (generoValido == null) {
+                    print("Introduce el género: ")
+                    val g = readlnOrNull()?.trim()
+                    if (g.isNullOrBlank()) {
+                        println("El género no puede estar vacío.")
+                    } else {
+                        generoValido = g
+                    }
+                }
+
+                var anioValido: Int? = null
+                while (anioValido == null) {
+                    print("Introduce el año: ")
+                    val a = readlnOrNull()?.toIntOrNull()
+                    if (a == null || a <= 0) {
+                        println("Año no válido. Debe ser un número entero positivo.")
+                    } else {
+                        anioValido = a
+                    }
+                }
+
+                var notaValida: Double? = null
+                while (notaValida == null) {
+                    print("Introduce la nota (0-10): ")
+                    val n = readlnOrNull()?.toDoubleOrNull()
+                    if (n == null || n !in 0.0..10.0) {
+                        println("Nota no válida. Debe ser un número decimal entre 0 y 10.")
+                    } else {
+                        notaValida = n
+                    }
+                }
+
+                val nuevoVideojuego = Videojuego(
+                    idValido,
+                    tituloValido,
+                    generoValido,
+                    anioValido,
+                    notaValida
+                )
+                anadirVideojuegoBin(rutaBin, nuevoVideojuego)
+                println("Videojuego añadido correctamente al final del fichero binario.")
+            }
+
+            4 -> {
+                var idModificar: Int? = null
+                while (idModificar == null) {
+                    print("Introduce el ID del videojuego a modificar: ")
+                    val idInput = readlnOrNull()?.toIntOrNull()
+                    if (idInput == null) {
+                        println("ID no válido. Debe ser un número entero.")
+                    } else {
+                        idModificar = idInput
+                    }
+                }
+
+                val juegoExistente = obtenerVideojuegoPorIdBin(rutaBin, idModificar)
+                if (juegoExistente == null) {
+                    println("No se encontró ningún videojuego con el ID: $idModificar. No se realiza ningún cambio.")
+                } else {
+                    println("Videojuego encontrado: '${juegoExistente.titulo}' (Nota actual: ${juegoExistente.nota})")
+                    var nuevaNotaValida: Double? = null
+                    while (nuevaNotaValida == null) {
+                        print("Introduce la nueva nota (0-10): ")
+                        val notaInput = readlnOrNull()?.toDoubleOrNull()
+                        if (notaInput == null || notaInput !in 0.0..10.0) {
+                            println("Nota no válida. Debe ser un número decimal entre 0 y 10.")
+                        } else {
+                            nuevaNotaValida = notaInput
+                        }
+                    }
+
+                    val modificado = modificarNotaBin(rutaBin, idModificar, nuevaNotaValida)
+                    if (modificado) {
+                        println("Nota del videojuego '${juegoExistente.titulo}' actualizada correctamente a $nuevaNotaValida en el fichero binario.")
+                    } else {
+                        println("No se pudo actualizar la información en el fichero binario.")
+                    }
+                }
+            }
+
+            5 -> {
+                var idEliminar: Int? = null
+                while (idEliminar == null) {
+                    print("Introduce el ID del videojuego a eliminar: ")
+                    val idInput = readlnOrNull()?.toIntOrNull()
+                    if (idInput == null) {
+                        println("ID no válido. Debe ser un número entero.")
+                    } else {
+                        idEliminar = idInput
+                    }
+                }
+
+                val juegoExistente = obtenerVideojuegoPorIdBin(rutaBin, idEliminar)
+                if (juegoExistente == null) {
+                    println("No se encontró ningún videojuego con el ID: $idEliminar.")
+                } else {
+                    println("Videojuego encontrado: '${juegoExistente.titulo}'")
+                    print("¿Seguro que deseas eliminarlo? (s/n): ")
+                    val confirmacion = readlnOrNull()?.trim()?.lowercase()
+                    if (confirmacion == "s") {
+                        val eliminado = eliminarVideojuegoBin(rutaBin, idEliminar)
+                        if (eliminado) {
+                            println("Videojuego con ID $idEliminar eliminado con éxito del fichero binario.")
+                        } else {
+                            println("Error al intentar eliminar el videojuego del fichero binario.")
+                        }
+                    } else {
+                        println("Operación cancelada. El videojuego no ha sido eliminado.")
+                    }
+                }
+            }
+
+            0 -> volver = true
+
+            null -> println("Introduce una opción numérica válida.")
+
             else -> println("Opción no válida.")
         }
     }

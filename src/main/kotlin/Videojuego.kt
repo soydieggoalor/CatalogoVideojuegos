@@ -16,7 +16,6 @@ data class Videojuego(
     @JacksonXmlProperty(localName = "nota")
     val nota: Double = 0.0
 )
-
 @JacksonXmlRootElement(localName = "videojuegos")
 data class VideojuegosXML(
     @JacksonXmlElementWrapper(useWrapping = false)
